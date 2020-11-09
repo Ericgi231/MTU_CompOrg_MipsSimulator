@@ -104,7 +104,7 @@ char* valueFunct(int op){
 }
 
 //convert value to register
-char* registerValue(int reg){
+char* valueRegister(int reg){
     if (reg == 0) {
         return "zero";
     }
@@ -203,6 +203,46 @@ char* registerValue(int reg){
     }
 }
 
+void printInsruction(union instruction instr, FILE *outputf){
+    if (instr.RType.op == 0)
+    {
+        //RType instructions -- ADD MORE EDGE CASES
+        if (instr.RType.funct == 12) //syscall
+        {
+            fprintf(outputf, "%s\n", 
+            valueFunct(instr.RType.funct));
+        } else { //default
+            fprintf(outputf, "%-5s $%s,$%s,$%s\n",
+            valueFunct(instr.RType.funct),
+            valueRegister(instr.RType.rd),
+            valueRegister(instr.RType.rs),
+            valueRegister(instr.RType.rt));
+        }
+    } else {
+        //IType instructions -- ADD MORE EDGE CASES
+        if (instr.IType.op == 35 || instr.IType.op == 43) //sw, lw
+        {
+            fprintf(outputf, "%-5s $%s,%d($%s)\n", 
+            valueOpcode(instr.IType.op),
+            valueRegister(instr.IType.rt),
+            instr.IType.imm,
+            valueRegister(instr.IType.rs));
+        } else if (instr.IType.op == 2) { //j
+            fprintf(outputf, "%s %d\n",
+            valueOpcode(instr.IType.op),
+            instr.IType.imm);
+        } else { //default
+            fprintf(outputf, "%-5s $%s,$%s,%d\n", 
+            valueOpcode(instr.IType.op),
+            valueRegister(instr.IType.rt),
+            valueRegister(instr.IType.rs),
+            instr.IType.imm);
+        }
+    }
+
+    return;
+}
+
 int main(int argc, char **argv) {
     //vars
     char testinput[12];
@@ -212,32 +252,27 @@ int main(int argc, char **argv) {
     FILE *inputf = fopen(argv[1], "r");
     FILE *outputf = fopen("log.txt", "w+");
 
+    //get text and data size
     fgets(testinput, 12, inputf);
     sscanf(testinput, "%d %d", &textsize, &datasize);
 
-    int regs[32];
-    int *data;
-    data = malloc(datasize * sizeof(int));
-    unsigned int pc;
-    int dataval;
-
-    //decode
-    fprintf(outputf, "insts:\n");
+    //decode instructions
     instrs = malloc(textsize * sizeof(union instruction));
+    fprintf(outputf, "insts:\n");
     for (int i = 0; i < textsize; i++)
     {
         fgets(testinput, 12, inputf);
         sscanf(testinput, "%x", &(instrs[i].x));
-        if (instrs[i].RType.op == 0)
-        {
-            fprintf(outputf, "%5d: %s\n", i, valueFunct(instrs[i].RType.funct));
-        } else {
-            fprintf(outputf, "%5d: %s\n", i, valueOpcode(instrs[i].IType.op));
-        }
+        fprintf(outputf, "%5d: ", i);
+        printInsruction(instrs[i], outputf);
     }
+    fprintf(outputf, "\n");
 
-    fprintf(outputf, "\ndata:\n");
-    
+    //decode data
+    int *data;
+    data = malloc(datasize * sizeof(int));
+    int dataval;
+    fprintf(outputf, "data:\n");
     for (int i = 0; i < datasize; i++)
     {
         fgets(testinput, 12, inputf);
@@ -245,13 +280,72 @@ int main(int argc, char **argv) {
         data[i] = dataval;
         fprintf(outputf, "%5d: %d\n", i+textsize, dataval);
     }
-
     fprintf(outputf, "\n");
 
     //execution
-    //while(1==1){
+    unsigned int pc = 0;
+    int regs[32];
+    for (int i = 0; i < 32; i++)
+    {
+        regs[i] = 0;
+    }
+    int hi;
+    int lo;
+    while(pc != 17){
+        //print PC and instruction
+        fprintf(outputf, "PC: %d\n", pc);
+        fprintf(outputf, "inst: ");
+        printInsruction(instrs[pc], outputf);
+        fprintf(outputf, "\n");
 
-    //}
+        //print regs
+        fprintf(outputf, "regs:\n");
+        for (int i = 0; i < 32; i++)
+        {
+            char* reg = malloc(6);
+            strcpy(reg, "$");
+            strcat(reg, valueRegister(i));
+            fprintf(outputf, "%8s = %5d", reg, regs[i]);
+            if ((i+1) % 4 == 0)
+            {
+                fprintf(outputf, "\n");
+            }
+            free(reg);
+        }
+        fprintf(outputf, "%8s = %5d", "$lo", lo);
+        fprintf(outputf, "%8s = %5d", "$hi", hi);
+        fprintf(outputf, "\n\n");
+
+        //print data memory:
+        fprintf(outputf, "data memory:\n");
+        for (int i = 0; i < datasize; i++)
+        {
+            fprintf(outputf, "   data[%3d] = %5d", i, data[i]);
+            if ((i+1) % 3 == 0)
+            {
+                fprintf(outputf, "\n");
+            }
+        }
+        
+        fprintf(outputf, "\n");
+
+        //execute
+        if (instrs[pc].RType.op == 0) //execute RTypes
+        {
+
+        } else { //execute ITypes
+
+        }
+
+        //increment PC
+        fprintf(outputf, "\n");
+        pc++;
+    }
+
+    //free allocated memory
+    //data = NULL;
+    //free(data);
+    //free(instrs);
 
     return 0;
 }
