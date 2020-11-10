@@ -66,6 +66,8 @@ char* valueOpcode(int op){
     {
         return "j";
     }
+    fprintf(stderr, "could not find inst with opcode %d", op);
+    exit(0);
 }
 
 //convert value to funct
@@ -110,6 +112,8 @@ char* valueFunct(int op){
     {
         return "syscall";
     }
+    fprintf(stderr, "could not find inst with opcode 0 and funct %d", op);
+    exit(0);
 }
 
 //convert value to register
@@ -210,6 +214,8 @@ char* valueRegister(int reg){
     if (reg == 31) {
         return "ra";
     }
+    fprintf(stderr, "register %d does not exist", reg);
+    exit(0);
 }
 
 void printInsruction(union instruction instr, FILE *outputf){
@@ -345,7 +351,7 @@ int main(int argc, char **argv) {
         //exit on running over operations
         if (pc >= textsize)
         {
-            fprintf(stderr, "Illegal instruction address: PC is referencing an address outside of the text segment.");
+            fprintf(stderr, "PC is accessing data memory at address %d", pc);
             exit = 1;
         }
 
@@ -366,7 +372,7 @@ int main(int argc, char **argv) {
                 {
                     lo = regs[instrs[pc].RType.rs] / regs[instrs[pc].RType.rt];
                 } else {
-                    fprintf(stderr, "Divide by zero: Integer divide by zero.");
+                    fprintf(stderr, "divide by zero for instruction at %d", pc);
                 }
             } else if (instrs[pc].RType.funct == mfhi) {
                 regs[instrs[pc].RType.rd] = hi;
@@ -394,7 +400,7 @@ int main(int argc, char **argv) {
                     fprintf(outputf, "exiting simulator");
                     exit = 1;
                 } else {
-                    fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                    fprintf(stderr, "could not find inst with opcode %d", instrs[pc].RType.funct);
                     exit = 1;
                 }
                 
