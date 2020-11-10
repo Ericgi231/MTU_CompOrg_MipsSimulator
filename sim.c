@@ -5,7 +5,7 @@
  */
 #include <stdio.h>
 
-//RType data union
+//instruction data union
 union instruction {
     unsigned int x;
     struct
@@ -206,23 +206,23 @@ char* valueRegister(int reg){
 void printInsruction(union instruction instr, FILE *outputf){
     if (instr.RType.op == 0)
     {
-        //RType instructions -- ADD MORE EDGE CASES
+        //RType instructions -- ADD MORE EDGE CASES?
         if (instr.RType.funct == 12) //syscall
         {
             fprintf(outputf, "%s\n", 
             valueFunct(instr.RType.funct));
         } else { //default
-            fprintf(outputf, "%-5s $%s,$%s,$%s\n",
+            fprintf(outputf, "%-5s\t $%s,$%s,$%s\n",
             valueFunct(instr.RType.funct),
             valueRegister(instr.RType.rd),
             valueRegister(instr.RType.rs),
             valueRegister(instr.RType.rt));
         }
     } else {
-        //IType instructions -- ADD MORE EDGE CASES
+        //IType instructions -- ADD MORE EDGE CASES?
         if (instr.IType.op == 35 || instr.IType.op == 43) //sw, lw
         {
-            fprintf(outputf, "%-5s $%s,%d($%s)\n", 
+            fprintf(outputf, "%-5s\t $%s,%d($%s)\n", 
             valueOpcode(instr.IType.op),
             valueRegister(instr.IType.rt),
             instr.IType.imm,
@@ -232,7 +232,7 @@ void printInsruction(union instruction instr, FILE *outputf){
             valueOpcode(instr.IType.op),
             instr.IType.imm);
         } else { //default
-            fprintf(outputf, "%-5s $%s,$%s,%d\n", 
+            fprintf(outputf, "%-5s\t $%s,$%s,%d\n", 
             valueOpcode(instr.IType.op),
             valueRegister(instr.IType.rt),
             valueRegister(instr.IType.rs),
@@ -244,6 +244,44 @@ void printInsruction(union instruction instr, FILE *outputf){
 }
 
 int main(int argc, char **argv) {
+    //enum
+    enum operationR{
+        addu = 33,
+        and = 36,
+        div = 26,
+        mfhi = 16,
+        mflo = 18,
+        mult = 24,
+        or = 37,
+        slt = 42,
+        subu = 35,
+        syscall = 12
+    };
+
+    enum operationI{
+        addiu = 9,
+        beq = 4,
+        bne = 5,
+        lw = 35,
+        sw = 43,
+        j = 2
+    };
+
+    enum reg{
+        zero,
+        at,
+        v0,v1,
+        a0,a1,a2,a3,
+        t0,t1,t2,t3,t4,t5,t6,t7,
+        s0,s1,s2,s3,s4,s5,s6,s7,
+        t8,t9,
+        k0,k1,
+        gp,
+        sp,
+        fp,
+        ra
+    };
+
     //vars
     char testinput[12];
     int textsize;
@@ -291,7 +329,92 @@ int main(int argc, char **argv) {
     }
     int hi;
     int lo;
-    while(pc != 17){
+    regs[gp] = textsize;
+    int exit = 0;
+    while(1 == 1){
+        //exit on running over operations
+        if (pc >= textsize)
+        {
+            fprintf(stderr, "Illegal instruction address: PC is referencing an address outside of the text segment.");
+            exit = 1;
+        }
+
+        if (exit == 1)
+        {
+            break;
+        }
+
+        //execute
+        if (instrs[pc].RType.op == 0) //execute RTypes
+        {
+            if (instrs[pc].RType.funct == addu) {
+                regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] + regs[instrs[pc].RType.rt];
+            } else if (instrs[pc].RType.funct == and) {
+                
+            } else if (instrs[pc].RType.funct == div) {
+                if (regs[instrs[pc].RType.rt] != 0)
+                {
+                    lo = regs[instrs[pc].RType.rs] / regs[instrs[pc].RType.rt];
+                } else {
+                    fprintf(stderr, "Divide by zero: Integer divide by zero.");
+                }
+            } else if (instrs[pc].RType.funct == mfhi) {
+                regs[instrs[pc].RType.rd] = hi;
+            } else if (instrs[pc].RType.funct == mflo) {
+                regs[instrs[pc].RType.rd] = lo;
+            } else if (instrs[pc].RType.funct == mult) {
+                
+            } else if (instrs[pc].RType.funct == or) {
+
+            } else if (instrs[pc].RType.funct == slt) {
+
+            } else if (instrs[pc].RType.funct == subu) {
+
+            } else if (instrs[pc].RType.funct == syscall) {
+                if (regs[v0] == 1) {
+                    printf("%d\n", regs[a0]);
+                } else if (regs[v0] == 5) {
+                    scanf("%d", &regs[v0]);
+                } else if (regs[v0] == 10) {
+                    fprintf(outputf, "PC: %d\n", pc);
+                    fprintf(outputf, "inst: ");
+                    printInsruction(instrs[pc], outputf);
+                    fprintf(outputf, "exiting simulator");
+                    exit = 1;
+                } else {
+                    fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                    exit = 1;
+                }
+                
+            } else {
+                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                exit = 1;
+            }
+        } else { //execute ITypes
+            if (instrs[pc].IType.op == addiu) {
+                regs[instrs[pc].IType.rt] = regs[instrs[pc].IType.rs] + instrs[pc].IType.imm;
+            } else if (instrs[pc].IType.op == beq) {
+
+            } else if (instrs[pc].IType.op == bne) {
+
+            } else if (instrs[pc].IType.op == lw) {
+
+            } else if (instrs[pc].IType.op == sw) {
+
+            } else if (instrs[pc].JType.op == j) {
+
+            } else {
+                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                exit = 1;
+            }
+        }
+
+        //check if exit hit
+        if (exit == 1)
+        {
+            break;
+        }
+        
         //print PC and instruction
         fprintf(outputf, "PC: %d\n", pc);
         fprintf(outputf, "inst: ");
@@ -327,25 +450,16 @@ int main(int argc, char **argv) {
             }
         }
         
-        fprintf(outputf, "\n");
-
-        //execute
-        if (instrs[pc].RType.op == 0) //execute RTypes
-        {
-
-        } else { //execute ITypes
-
-        }
+        fprintf(outputf, "\n\n");
 
         //increment PC
-        fprintf(outputf, "\n");
         pc++;
     }
 
     //free allocated memory
-    //data = NULL;
-    //free(data);
-    //free(instrs);
+    data = NULL;
+    free(data);
+    free(instrs);
 
     return 0;
 }
