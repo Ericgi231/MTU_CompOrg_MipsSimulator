@@ -31,6 +31,15 @@ union instruction {
     } JType;
 };
 
+union hilo {
+    unsigned long long x;
+    struct
+    {
+        unsigned int lo:32;
+        unsigned int hi:32;
+    } parts;
+};
+
 //convert value to opcode
 char* valueOpcode(int op){
     if (op == 9)
@@ -327,8 +336,9 @@ int main(int argc, char **argv) {
     {
         regs[i] = 0;
     }
-    int hi;
-    int lo;
+    int hi = 0;
+    int lo = 0;
+    union hilo hilo;
     regs[gp] = textsize;
     int exit = 0;
     while(1 == 1){
@@ -350,7 +360,7 @@ int main(int argc, char **argv) {
             if (instrs[pc].RType.funct == addu) {
                 regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] + regs[instrs[pc].RType.rt];
             } else if (instrs[pc].RType.funct == and) {
-                
+                regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] & regs[instrs[pc].RType.rt];
             } else if (instrs[pc].RType.funct == div) {
                 if (regs[instrs[pc].RType.rt] != 0)
                 {
@@ -363,13 +373,15 @@ int main(int argc, char **argv) {
             } else if (instrs[pc].RType.funct == mflo) {
                 regs[instrs[pc].RType.rd] = lo;
             } else if (instrs[pc].RType.funct == mult) {
-                
+                hilo.x = regs[instrs[pc].RType.rs] * regs[instrs[pc].RType.rt];
+                hi = hilo.parts.hi;
+                lo = hilo.parts.lo;
             } else if (instrs[pc].RType.funct == or) {
-
+                regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] | regs[instrs[pc].RType.rt];
             } else if (instrs[pc].RType.funct == slt) {
-
+                regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] < regs[instrs[pc].RType.rt] ? 1 : 0;
             } else if (instrs[pc].RType.funct == subu) {
-
+                regs[instrs[pc].RType.rd] = regs[instrs[pc].RType.rs] - regs[instrs[pc].RType.rt];
             } else if (instrs[pc].RType.funct == syscall) {
                 if (regs[v0] == 1) {
                     printf("%d\n", regs[a0]);
@@ -408,6 +420,9 @@ int main(int argc, char **argv) {
                 exit = 1;
             }
         }
+
+        //prevent change to $zero
+        regs[zero] = 0;
 
         //check if exit hit
         if (exit == 1)
