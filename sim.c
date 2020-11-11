@@ -1,9 +1,11 @@
 /*
  *  CS3421 Assignment 4
  *  Name: Eric Grant
- *
+ *  ILLEGAL DATA ADDRESS NOT DONE YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 //instruction data union
 union instruction {
@@ -307,6 +309,7 @@ int main(int argc, char **argv) {
     char testinput[12];
     int textsize;
     int datasize;
+    int i = 0;
     union instruction *instrs;
     FILE *inputf = fopen(argv[1], "r");
     FILE *outputf = fopen("log.txt", "w+");
@@ -318,7 +321,7 @@ int main(int argc, char **argv) {
     //decode instructions
     instrs = malloc(textsize * sizeof(union instruction));
     fprintf(outputf, "insts:\n");
-    for (int i = 0; i < textsize; i++)
+    for (i = 0; i < textsize; i++)
     {
         fgets(testinput, 12, inputf);
         sscanf(testinput, "%x", &(instrs[i].x));
@@ -332,7 +335,7 @@ int main(int argc, char **argv) {
     data = malloc(datasize * sizeof(int));
     int dataval;
     fprintf(outputf, "data:\n");
-    for (int i = 0; i < datasize; i++)
+    for (i = 0; i < datasize; i++)
     {
         fgets(testinput, 12, inputf);
         sscanf(testinput, "%x", &dataval);
@@ -345,7 +348,7 @@ int main(int argc, char **argv) {
     unsigned int pc = 0;
     int pcShift = 0;
     int regs[32];
-    for (int i = 0; i < 32; i++)
+    for (i = 0; i < 32; i++)
     {
         regs[i] = 0;
     }
@@ -457,7 +460,7 @@ int main(int argc, char **argv) {
 
         //print regs
         fprintf(outputf, "regs:\n");
-        for (int i = 0; i < 32; i++)
+        for (i = 0; i < 32; i++)
         {
             char* reg = malloc(6);
             strcpy(reg, "$");
@@ -475,7 +478,7 @@ int main(int argc, char **argv) {
 
         //print data memory:
         fprintf(outputf, "data memory:\n");
-        for (int i = 0; i < datasize; i++)
+        for (i = 0; i < datasize; i++)
         {
             fprintf(outputf, "   data[%3d] = %5d", i, data[i]);
             if ((i+1) % 3 == 0 && i != datasize - 1)
