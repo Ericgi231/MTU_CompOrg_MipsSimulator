@@ -66,7 +66,7 @@ char* valueOpcode(int op){
     {
         return "j";
     }
-    fprintf(stderr, "could not find inst with opcode %d", op);
+    fprintf(stderr, "could not find inst with opcode %d\n", op);
     exit(0);
 }
 
@@ -112,7 +112,7 @@ char* valueFunct(int op){
     {
         return "syscall";
     }
-    fprintf(stderr, "could not find inst with opcode 0 and funct %d", op);
+    fprintf(stderr, "could not find inst with opcode 0 and funct %d\n", op);
     exit(0);
 }
 
@@ -214,7 +214,7 @@ char* valueRegister(int reg){
     if (reg == 31) {
         return "ra";
     }
-    fprintf(stderr, "register %d does not exist", reg);
+    fprintf(stderr, "register %d does not exist\n", reg);
     exit(0);
 }
 
@@ -227,7 +227,7 @@ void printInsruction(union instruction instr, FILE *outputf){
             fprintf(outputf, "%s\n", 
             valueFunct(instr.RType.funct));
         } else { //default
-            fprintf(outputf, "%-5s\t $%s,$%s,$%s\n",
+            fprintf(outputf, "%s\t$%s,$%s,$%s\n",
             valueFunct(instr.RType.funct),
             valueRegister(instr.RType.rd),
             valueRegister(instr.RType.rs),
@@ -237,17 +237,23 @@ void printInsruction(union instruction instr, FILE *outputf){
         //IType instructions -- ADD MORE EDGE CASES?
         if (instr.IType.op == 35 || instr.IType.op == 43) //sw, lw
         {
-            fprintf(outputf, "%-5s\t $%s,%d($%s)\n", 
+            fprintf(outputf, "%s\t$%s,%d($%s)\n", 
             valueOpcode(instr.IType.op),
             valueRegister(instr.IType.rt),
             instr.IType.imm,
             valueRegister(instr.IType.rs));
         } else if (instr.IType.op == 2) { //j
-            fprintf(outputf, "%s %d\n",
+            fprintf(outputf, "%s\t%d\n",
             valueOpcode(instr.IType.op),
             instr.IType.imm);
+        } else if (instr.IType.op == 4 || instr.IType.op == 5) { //beq, bne
+            fprintf(outputf, "%s\t$%s,$%s,%d\n", 
+            valueOpcode(instr.IType.op),
+            valueRegister(instr.IType.rs),
+            valueRegister(instr.IType.rt),
+            instr.IType.imm);
         } else { //default
-            fprintf(outputf, "%-5s\t $%s,$%s,%d\n", 
+            fprintf(outputf, "%s\t$%s,$%s,%d\n", 
             valueOpcode(instr.IType.op),
             valueRegister(instr.IType.rt),
             valueRegister(instr.IType.rs),
@@ -316,7 +322,7 @@ int main(int argc, char **argv) {
     {
         fgets(testinput, 12, inputf);
         sscanf(testinput, "%x", &(instrs[i].x));
-        fprintf(outputf, "%5d: ", i);
+        fprintf(outputf, "%4d: ", i);
         printInsruction(instrs[i], outputf);
     }
     fprintf(outputf, "\n");
@@ -331,12 +337,13 @@ int main(int argc, char **argv) {
         fgets(testinput, 12, inputf);
         sscanf(testinput, "%x", &dataval);
         data[i] = dataval;
-        fprintf(outputf, "%5d: %d\n", i+textsize, dataval);
+        fprintf(outputf, "%4d: %d\n", i+textsize, dataval);
     }
     fprintf(outputf, "\n");
 
     //execution
     unsigned int pc = 0;
+    int pcShift = 0;
     int regs[32];
     for (int i = 0; i < 32; i++)
     {
@@ -351,7 +358,7 @@ int main(int argc, char **argv) {
         //exit on running over operations
         if (pc >= textsize)
         {
-            fprintf(stderr, "PC is accessing data memory at address %d", pc);
+            fprintf(stderr, "PC is accessing data memory at address %d\n", pc);
             exit = 1;
         }
 
@@ -372,7 +379,8 @@ int main(int argc, char **argv) {
                 {
                     lo = regs[instrs[pc].RType.rs] / regs[instrs[pc].RType.rt];
                 } else {
-                    fprintf(stderr, "divide by zero for instruction at %d", pc);
+                    fprintf(stderr, "divide by zero for instruction at %d\n", pc);
+                    exit = 1;
                 }
             } else if (instrs[pc].RType.funct == mfhi) {
                 regs[instrs[pc].RType.rd] = hi;
@@ -397,32 +405,37 @@ int main(int argc, char **argv) {
                     fprintf(outputf, "PC: %d\n", pc);
                     fprintf(outputf, "inst: ");
                     printInsruction(instrs[pc], outputf);
-                    fprintf(outputf, "exiting simulator");
+                    fprintf(outputf, "exiting simulator\n");
                     exit = 1;
                 } else {
-                    fprintf(stderr, "could not find inst with opcode %d", instrs[pc].RType.funct);
+                    fprintf(stderr, "syscall does not support value of %d\n", regs[v0]);
                     exit = 1;
                 }
-                
             } else {
-                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values\n");
                 exit = 1;
             }
         } else { //execute ITypes
             if (instrs[pc].IType.op == addiu) {
                 regs[instrs[pc].IType.rt] = regs[instrs[pc].IType.rs] + instrs[pc].IType.imm;
             } else if (instrs[pc].IType.op == beq) {
-
+                if (regs[instrs[pc].IType.rs] == regs[instrs[pc].IType.rt])
+                {
+                    pcShift = instrs[pc].IType.imm;
+                }
             } else if (instrs[pc].IType.op == bne) {
-
+                if (regs[instrs[pc].IType.rs] != regs[instrs[pc].IType.rt])
+                {
+                    pcShift = instrs[pc].IType.imm;
+                }
             } else if (instrs[pc].IType.op == lw) {
-
+                regs[instrs[pc].IType.rt] = data[0+instrs[pc].IType.imm]; //hard coded assuming $gp is always used as register
             } else if (instrs[pc].IType.op == sw) {
-
+                data[instrs[pc].IType.imm] = regs[instrs[pc].IType.rt]; //hard coded assuming $gp is always used as register
             } else if (instrs[pc].JType.op == j) {
-
+                pcShift = instrs[pc].JType.imm - pc;
             } else {
-                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.");
+                fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values.\n");
                 exit = 1;
             }
         }
@@ -465,16 +478,22 @@ int main(int argc, char **argv) {
         for (int i = 0; i < datasize; i++)
         {
             fprintf(outputf, "   data[%3d] = %5d", i, data[i]);
-            if ((i+1) % 3 == 0)
+            if ((i+1) % 3 == 0 && i != datasize - 1)
             {
                 fprintf(outputf, "\n");
             }
         }
         
-        fprintf(outputf, "\n\n");
+        fprintf(outputf, "\n\n\n");
 
         //increment PC
-        pc++;
+        if (pcShift == 0)
+        {
+            pc++;
+        } else {
+            pc += pcShift;
+        }
+        pcShift = 0;
     }
 
     //free allocated memory
