@@ -1,7 +1,7 @@
 /*
  *  CS3421 Assignment 4
  *  Name: Eric Grant
- *  ILLEGAL DATA ADDRESS NOT DONE YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ *  
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -228,6 +228,15 @@ void printInsruction(union instruction instr, FILE *outputf){
         {
             fprintf(outputf, "%s\n", 
             valueFunct(instr.RType.funct));
+        } else if (instr.RType.funct == 24 || instr.RType.funct == 26) { //mult and div
+            fprintf(outputf, "%s\t$%s,$%s\n",
+            valueFunct(instr.RType.funct),
+            valueRegister(instr.RType.rs),
+            valueRegister(instr.RType.rt));
+        } else if (instr.RType.funct == 16 || instr.RType.funct == 18) { //mfhi and mflo
+            fprintf(outputf, "%s\t$%s\n",
+            valueFunct(instr.RType.funct),
+            valueRegister(instr.RType.rd));
         } else { //default
             fprintf(outputf, "%s\t$%s,$%s,$%s\n",
             valueFunct(instr.RType.funct),
@@ -381,6 +390,7 @@ int main(int argc, char **argv) {
                 if (regs[instrs[pc].RType.rt] != 0)
                 {
                     lo = regs[instrs[pc].RType.rs] / regs[instrs[pc].RType.rt];
+                    hi = regs[instrs[pc].RType.rs] % regs[instrs[pc].RType.rt];
                 } else {
                     fprintf(stderr, "divide by zero for instruction at %d\n", pc);
                     exit = 1;
@@ -410,9 +420,6 @@ int main(int argc, char **argv) {
                     printInsruction(instrs[pc], outputf);
                     fprintf(outputf, "exiting simulator\n");
                     exit = 1;
-                } else {
-                    fprintf(stderr, "syscall does not support value of %d\n", regs[v0]);
-                    exit = 1;
                 }
             } else {
                 fprintf(stderr, "Illegal instruction: Illegal combination of opcode and funct field values\n");
@@ -432,9 +439,21 @@ int main(int argc, char **argv) {
                     pcShift = instrs[pc].IType.imm;
                 }
             } else if (instrs[pc].IType.op == lw) {
-                regs[instrs[pc].IType.rt] = data[0+instrs[pc].IType.imm]; //hard coded assuming $gp is always used as register
+                if (instrs[pc].IType.imm < datasize)
+                {
+                    regs[instrs[pc].IType.rt] = data[instrs[pc].IType.imm]; //hard coded assuming $gp is always used as register
+                } else {
+                    fprintf(stderr, "store outside of data memory at address %d\n", instrs[pc].IType.imm + textsize);
+                    exit = 1;
+                }
             } else if (instrs[pc].IType.op == sw) {
-                data[instrs[pc].IType.imm] = regs[instrs[pc].IType.rt]; //hard coded assuming $gp is always used as register
+                if (instrs[pc].IType.imm < datasize)
+                {
+                    data[instrs[pc].IType.imm] = regs[instrs[pc].IType.rt]; //hard coded assuming $gp is always used as register
+                } else {
+                    fprintf(stderr, "store outside of data memory at address %d\n", instrs[pc].IType.imm + textsize);
+                    exit = 1;
+                }
             } else if (instrs[pc].JType.op == j) {
                 pcShift = instrs[pc].JType.imm - pc;
             } else {
